@@ -1,0 +1,90 @@
+{
+  "Provider": "AWS",
+  "Region": "ap-northeast-2",
+  "Description": "비준수 예시 — 내부업무 서버가 Public Subnet에 노출, DB 포트 전체 허용",
+
+  "VPC": {
+    "VpcId": "vpc-0abc12345",
+    "CidrBlock": "10.0.0.0/16",
+    "InternetGateway": "igw-0abc12345"
+  },
+
+  "Subnets": [
+    {
+      "SubnetId": "subnet-pub-01",
+      "Name": "public-subnet",
+      "CidrBlock": "10.0.1.0/24",
+      "MapPublicIpOnLaunch": true,
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "0.0.0.0/0", "Target": "igw-0abc12345" }
+        ]
+      }
+    },
+    {
+      "SubnetId": "subnet-app-01",
+      "Name": "app-subnet",
+      "CidrBlock": "10.0.2.0/24",
+      "MapPublicIpOnLaunch": false,
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "0.0.0.0/0", "Target": "igw-0abc12345" },
+          { "Destination": "10.0.0.0/16", "Target": "local" }
+        ]
+      },
+      "Note": "문제: 내부업무 앱 서버가 인터넷 게이트웨이로 직접 라우팅됨"
+    },
+    {
+      "SubnetId": "subnet-db-01",
+      "Name": "db-subnet",
+      "CidrBlock": "10.0.3.0/24",
+      "MapPublicIpOnLaunch": true,
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "0.0.0.0/0", "Target": "igw-0abc12345" }
+        ]
+      },
+      "Note": "문제: DB 서브넷이 Public Subnet으로 인터넷에 노출됨"
+    }
+  ],
+
+  "SecurityGroups": [
+    {
+      "GroupId": "sg-web",
+      "Name": "web-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "80",  "Source": "0.0.0.0/0" },
+        { "Protocol": "tcp", "Port": "443", "Source": "0.0.0.0/0" },
+        { "Protocol": "tcp", "Port": "22",  "Source": "0.0.0.0/0",
+          "Note": "문제: SSH 전체 인터넷 허용" }
+      ]
+    },
+    {
+      "GroupId": "sg-db",
+      "Name": "db-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "3306", "Source": "0.0.0.0/0",
+          "Note": "문제: MySQL 포트 전체 인터넷 허용" },
+        { "Protocol": "-1",  "Port": "ALL",  "Source": "0.0.0.0/0",
+          "Note": "문제: 모든 트래픽 전체 허용" }
+      ]
+    }
+  ],
+
+  "LoadBalancer": {
+    "Type": "ALB",
+    "Scheme": "internet-facing",
+    "Subnet": "subnet-db-01",
+    "Note": "문제: ALB가 DB 서브넷에 위치"
+  },
+
+  "RDSInstance": {
+    "DBInstanceId": "prod-mysql",
+    "PubliclyAccessible": true,
+    "SubnetGroup": "subnet-db-01",
+    "Note": "문제: RDS PubliclyAccessible=true"
+  },
+
+  "WAF": null,
+  "NATGateway": null
+}

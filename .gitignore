@@ -1,0 +1,21 @@
+# API 키 및 민감 정보
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# 분석 결과 (필요 시 제거)
+result*.json
+
+# OS
+.DS_Store
+Thumbs.db

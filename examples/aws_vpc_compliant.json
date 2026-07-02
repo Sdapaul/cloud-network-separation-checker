@@ -1,0 +1,122 @@
+{
+  "Provider": "AWS",
+  "Region": "ap-northeast-2",
+  "Description": "준수 예시 — 2단 방화벽 DMZ 구성, Private Subnet 격리, 최소 허용 보안그룹",
+
+  "VPC": {
+    "VpcId": "vpc-0def67890",
+    "CidrBlock": "10.10.0.0/16",
+    "InternetGateway": "igw-0def67890"
+  },
+
+  "Subnets": [
+    {
+      "SubnetId": "subnet-public-01",
+      "Name": "dmz-public-subnet",
+      "CidrBlock": "10.10.1.0/24",
+      "MapPublicIpOnLaunch": false,
+      "Purpose": "ALB, WAF, NAT Gateway 위치 (DMZ)",
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "0.0.0.0/0", "Target": "igw-0def67890" },
+          { "Destination": "10.10.0.0/16", "Target": "local" }
+        ]
+      }
+    },
+    {
+      "SubnetId": "subnet-app-01",
+      "Name": "app-private-subnet",
+      "CidrBlock": "10.10.2.0/24",
+      "MapPublicIpOnLaunch": false,
+      "Purpose": "내부업무 앱 서버 (Private)",
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "0.0.0.0/0", "Target": "nat-0def67890" },
+          { "Destination": "10.10.0.0/16", "Target": "local" }
+        ]
+      }
+    },
+    {
+      "SubnetId": "subnet-db-01",
+      "Name": "db-isolated-subnet",
+      "CidrBlock": "10.10.3.0/24",
+      "MapPublicIpOnLaunch": false,
+      "Purpose": "DB 격리 서브넷 (아웃바운드 인터넷 없음)",
+      "RouteTable": {
+        "Routes": [
+          { "Destination": "10.10.0.0/16", "Target": "local" }
+        ]
+      }
+    }
+  ],
+
+  "SecurityGroups": [
+    {
+      "GroupId": "sg-alb",
+      "Name": "alb-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "443", "Source": "0.0.0.0/0" }
+      ],
+      "OutboundRules": [
+        { "Protocol": "tcp", "Port": "8080", "Destination": "sg-app" }
+      ]
+    },
+    {
+      "GroupId": "sg-app",
+      "Name": "app-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "8080", "Source": "sg-alb" }
+      ],
+      "OutboundRules": [
+        { "Protocol": "tcp", "Port": "3306", "Destination": "sg-db" },
+        { "Protocol": "tcp", "Port": "443",  "Destination": "0.0.0.0/0" }
+      ]
+    },
+    {
+      "GroupId": "sg-db",
+      "Name": "db-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "3306", "Source": "sg-app" }
+      ],
+      "OutboundRules": []
+    },
+    {
+      "GroupId": "sg-bastion",
+      "Name": "bastion-sg",
+      "InboundRules": [
+        { "Protocol": "tcp", "Port": "22", "Source": "203.0.113.10/32",
+          "Note": "사내 공인 IP만 허용" }
+      ]
+    }
+  ],
+
+  "NATGateway": {
+    "NatGatewayId": "nat-0def67890",
+    "Subnet": "subnet-public-01",
+    "Purpose": "Private 서브넷 아웃바운드 전용"
+  },
+
+  "LoadBalancer": {
+    "Type": "ALB",
+    "Scheme": "internet-facing",
+    "Subnet": "subnet-public-01",
+    "WAF": "waf-0def67890",
+    "HTTPS": true
+  },
+
+  "RDSInstance": {
+    "DBInstanceId": "prod-mysql",
+    "PubliclyAccessible": false,
+    "SubnetGroup": "subnet-db-01",
+    "MultiAZ": true
+  },
+
+  "BastionHost": {
+    "InstanceId": "i-bastion-01",
+    "Subnet": "subnet-public-01",
+    "Purpose": "SSH 관리 전용 (세션매니저 권장)"
+  },
+
+  "VPCFlowLogs": true,
+  "CloudTrail": true
+}
