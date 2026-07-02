@@ -185,11 +185,30 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
 
 @media print{
   body{background:#fff}
-  header.gov,#s1,#s2,.run,.dia-actions,footer{display:none!important}
+  /* 헤더·푸터·인터랙티브 요소 숨김 */
+  header.gov,footer,.run,.dia-actions{display:none!important}
+  details.ai,#pickBtn,.drop>.btn,.drop>button,#fmeta,#runBtn{display:none!important}
+  /* 제1절 — 업로드 이미지만 표시 */
+  .drop{border:1px solid #ccc!important;min-height:auto!important;padding:6px!important;
+        background:#fff!important;gap:4px!important;flex-direction:column!important;align-items:flex-start!important}
+  .drop .big,.drop .sub{display:none!important}
+  .drop img,.drop canvas{max-width:100%!important;max-height:280px!important;border:1px solid #ddd}
+  .up-wrap{grid-template-columns:1fr!important}
+  .guide{display:none!important}
+  /* 제2절 — 체크박스·폼 표시 */
+  .chk:hover{background:none}
+  .chk input{width:14px;height:14px}
+  .q select{border:none!important;-webkit-appearance:none!important;
+            background:none!important;padding:2px 0!important;font-size:13px!important;font-weight:700;color:#13233A}
+  fieldset{padding:8px 12px!important;margin-bottom:10px!important}
+  .grid2{gap:10px!important}
+  /* 공통 레이아웃 */
   main{padding:0;max-width:100%}
-  section.jul{border:0;box-shadow:none;margin:0}
-  .jul-h{display:none}
-  .jul-b{padding:0}
+  section.jul{border:1px solid #ccc!important;border-top:3px solid #1B4B8F!important;
+              box-shadow:none!important;margin:0 0 14px!important;break-inside:avoid}
+  .jul-h{padding:8px 16px 6px!important;border-bottom:1px solid #ddd}
+  .jul-h .hint{display:none}
+  .jul-b{padding:10px 16px!important}
   #report{display:block!important}
 }
 </style>
@@ -277,8 +296,6 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
         </div>
 
         <div class="ai-cfg-block" id="openaiCfg">
-          <label for="openaiKey">OpenAI API Key</label>
-          <input id="openaiKey" type="password" placeholder="sk-...">
           <label for="openaiModel">모델</label>
           <input id="openaiModel" type="text" value="gpt-4o">
         </div>
@@ -434,6 +451,15 @@ const QUESTIONS = [
    폼 렌더링
    ════════════════════════════════════════════════════════════ */
 const $ = s => document.querySelector(s);
+
+/* ── OpenAI API Key ─────────────────────────────────────────
+   키를 변경하려면 아래 _B 값만 수정하십시오.
+   변경 방법: 새 키를 브라우저 콘솔에서 btoa("sk-proj-...") 로 인코딩한 뒤 교체.
+   이 값은 화면에 표시되지 않습니다.
+   ─────────────────────────────────────────────────────────── */
+const _B = "c2stcHJvai1ab3d0aW9CVmJMbDdpajkzQlc3M2VVX0phNTFOZHI4Y3QtTVJMdkdVR3Jnd2hXNkl0SnRoLWdVbE1DVk1obEIzcXl1TnlweHQ3OFQzQmxia0ZKOERiTmRfZzBvUjRDeFhSMFJwaDFzLUEtbTlHRG45NTRDSTdLaWFPMllzNFYyQW8zZGV3QVhiUlpkYzRyZFUyZklUZ1NQbVlQMEE=";
+const OPENAI_KEY = atob(_B);
+
 function chkRow(id,nm,desc){
   return `<label class="chk"><input type="checkbox" id="${id}"><span><b>${nm}</b><small>${desc}</small></span></label>`;
 }
@@ -609,8 +635,8 @@ $("#aiBtn").addEventListener("click", async ()=>{
   try{
     let text;
     if(provider==="openai"){
-      const key = document.getElementById("openaiKey").value.trim();
-      if(!key){ msg.className="ai-msg err"; msg.textContent="OpenAI API Key를 입력하십시오."; return; }
+      const key = OPENAI_KEY;
+      if(!key){ msg.className="ai-msg err"; msg.textContent="API Key가 설정되지 않았습니다. 소스 코드의 OPENAI_KEY를 확인하십시오."; return; }
       const model = document.getElementById("openaiModel").value.trim() || "gpt-4o";
       const res = await fetch("https://api.openai.com/v1/chat/completions",{
         method:"POST",
