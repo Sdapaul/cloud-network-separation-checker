@@ -101,6 +101,12 @@ details.ai[open] summary::before{content:"▾ "}
 .ai-msg{font-size:12.5px;padding:8px 10px;border-radius:4px;display:none}
 .ai-msg.ok{display:block;background:var(--ok-t);color:var(--ok)}
 .ai-msg.err{display:block;background:var(--bad-t);color:var(--bad)}
+.ai-radio-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.ai-radio{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);cursor:pointer;padding:5px 10px;border:1px solid var(--line-2);border-radius:4px;background:#fff;transition:border-color .15s,background .15s}
+.ai-radio:has(input:checked){border-color:var(--blue);background:var(--blue-t);color:var(--blue-d)}
+.ai-radio input{width:14px;height:14px;accent-color:var(--blue);margin:0}
+.ai-cfg-block{display:grid;gap:8px}
+.ai-cfg-block label{font-size:12.5px;color:var(--muted)}
 
 .run{display:flex;justify-content:center;padding:8px 0 4px}
 
@@ -198,7 +204,8 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
     </div>
     <div class="basis">
       검토기준 <b>전자금융감독규정 제15조</b>(해킹 등 방지대책) 및 동 시행세칙<br>
-      2025. 2. 5. 규정 개정 · 2026. 4. 20. 시행세칙 개정(내부업무망 SaaS 예외) 반영
+      2025. 2. 5. 규정 개정 · 2026. 4. 20. 시행세칙 개정(내부업무망 SaaS 예외) 반영<br>
+      <span style="color:#A9BFDD">온프레미스 · AWS · Azure · GCP 클라우드 구성도 지원</span>
     </div>
   </div>
 </header>
@@ -208,13 +215,13 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
 <!-- 제1절 구성도 입력 -->
 <section class="jul" id="s1">
   <div class="jul-h"><span class="no">제 1 절</span><h2>구성도 입력</h2>
-    <span class="hint">이미지(PNG·JPG) 또는 PDF · 파일은 브라우저 밖으로 전송되지 않습니다</span></div>
+    <span class="hint">이미지(PNG·JPG) 또는 PDF · AWS·Azure·GCP 아키텍처 다이어그램 지원 · 파일은 브라우저 밖으로 전송되지 않습니다</span></div>
   <div class="jul-b">
     <div class="up-wrap">
       <div>
         <div class="drop" id="drop" tabindex="0" role="button" aria-label="구성도 파일 업로드">
           <div class="big" id="dropBig">구성도 파일을 이곳에 끌어다 놓거나 클릭하여 선택</div>
-          <div class="sub" id="dropSub">망 구성도 이미지(PNG/JPG) 또는 PDF 1부</div>
+          <div class="sub" id="dropSub">온프레미스 망 구성도 · AWS / Azure / GCP 아키텍처 다이어그램 (PNG/JPG/PDF)</div>
           <button class="btn ghost" type="button" id="pickBtn">파일 선택</button>
         </div>
         <input type="file" id="file" accept="image/png,image/jpeg,image/webp,application/pdf" hidden>
@@ -248,14 +255,44 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
   <div class="jul-b">
 
     <details class="ai" id="aiBox">
-      <summary>AI 자동 인식 (선택) — 사내 AI 게이트웨이가 있는 경우 구성도에서 자동 식별</summary>
+      <summary>AI 자동 인식 (선택) — AWS · Azure · GCP · 온프레미스 구성도 이미지에서 망분리 요소 자동 식별</summary>
       <div class="ai-b">
-        <div><label for="aiUrl">API 엔드포인트 (Anthropic Messages API 호환 · 내부망은 사내 게이트웨이 주소 입력)</label>
-        <input id="aiUrl" type="text" value="https://api.anthropic.com/v1/messages"></div>
-        <div><label for="aiModel">모델</label><input id="aiModel" type="text" value="claude-sonnet-4-6"></div>
-        <div><label for="aiKey">API Key (사내 게이트웨이 정책에 따라 비워둘 수 있음)</label>
-        <input id="aiKey" type="password" placeholder="선택 입력"></div>
-        <div><button class="btn ghost" type="button" id="aiBtn">업로드한 구성도에서 자동 인식 실행</button></div>
+
+        <div>
+          <label>① 클라우드 / 인프라 환경 선택</label>
+          <div class="ai-radio-row">
+            <label class="ai-radio"><input type="radio" name="cloudType" value="general" checked> 온프레미스 (일반)</label>
+            <label class="ai-radio"><input type="radio" name="cloudType" value="aws"> AWS</label>
+            <label class="ai-radio"><input type="radio" name="cloudType" value="azure"> Azure</label>
+            <label class="ai-radio"><input type="radio" name="cloudType" value="gcp"> GCP</label>
+          </div>
+        </div>
+
+        <div>
+          <label>② AI 제공자 선택</label>
+          <div class="ai-radio-row">
+            <label class="ai-radio"><input type="radio" name="aiProvider" value="openai" checked> OpenAI (GPT-4o)</label>
+            <label class="ai-radio"><input type="radio" name="aiProvider" value="anthropic"> Anthropic (Claude)</label>
+          </div>
+        </div>
+
+        <div class="ai-cfg-block" id="openaiCfg">
+          <label for="openaiKey">OpenAI API Key</label>
+          <input id="openaiKey" type="password" placeholder="sk-...">
+          <label for="openaiModel">모델</label>
+          <input id="openaiModel" type="text" value="gpt-4o">
+        </div>
+
+        <div class="ai-cfg-block" id="anthropicCfg" style="display:none">
+          <label for="aiUrl">API 엔드포인트 (Anthropic Messages API 호환 · 내부망은 사내 게이트웨이 주소 입력)</label>
+          <input id="aiUrl" type="text" value="https://api.anthropic.com/v1/messages">
+          <label for="aiModel">모델</label>
+          <input id="aiModel" type="text" value="claude-sonnet-4-6">
+          <label for="aiKey">API Key (사내 게이트웨이 정책에 따라 비워둘 수 있음)</label>
+          <input id="aiKey" type="password" placeholder="선택 입력">
+        </div>
+
+        <div><button class="btn ghost" type="button" id="aiBtn">③ 업로드한 구성도에서 자동 인식 실행</button></div>
         <div class="ai-msg" id="aiMsg"></div>
       </div>
     </details>
@@ -471,41 +508,153 @@ async function tryRenderPdf(f){
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 
 /* ════════════════════════════════════════════════════════════
-   AI 자동 인식 (선택 · Anthropic Messages API 호환)
+   AI 자동 인식 — OpenAI(GPT-4o) / Anthropic(Claude) 선택
+   온프레미스 · AWS · Azure · GCP 클라우드 구성도 대응
    ════════════════════════════════════════════════════════════ */
+
+/* 제공자 토글 */
+document.querySelectorAll('input[name="aiProvider"]').forEach(r=>{
+  r.addEventListener("change",()=>{
+    const isOAI = document.querySelector('input[name="aiProvider"]:checked').value==="openai";
+    document.getElementById("openaiCfg").style.display = isOAI ? "" : "none";
+    document.getElementById("anthropicCfg").style.display = isOAI ? "none" : "";
+  });
+});
+
+/* 클라우드 환경별 프롬프트 빌더 */
+function buildCloudPrompt(cloudType, ids){
+  const schema = `{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},"notes":"관찰한 특이사항 1~2문장(한국어)"}`;
+  const maps = {
+    general:`internal=내부업무망, internet=인터넷 접점, inetpc=인터넷 전용망/인터넷PC, dmz=DMZ, server=전산실/서버팜, db=DB존, dev=개발망, dr=재해복구, fw_ext=외부방화벽, fw_int=내부방화벽, ips=IPS/IDS, netlink=망연계솔루션, vpn=VPN, nac=NAC, av=백신/PMS, siem=SIEM/관제, ap=무선AP`,
+    aws:`
+AWS 구성요소 → 망분리 개념 매핑:
+  internal  = Private Subnet의 EC2·ECS·Lambda·App Server 등 내부 서비스
+  internet  = Internet Gateway(IGW), 0.0.0.0/0 라우팅, 인터넷 연결 경로
+  inetpc    = 별도 인터넷용 워크스테이션·WorkSpaces·VDI
+  dmz       = Public Subnet 서비스 계층(ALB·WAF 위치), 공개 서비스 구간
+  server    = EC2·ECS·Fargate 앱 서버 계층(Private)
+  db        = RDS·Aurora·DynamoDB·ElastiCache (Private Subnet 격리)
+  dev       = 개발·스테이징 VPC 또는 서브넷
+  dr        = Multi-Region DR·Cross-Region Replication·AWS Backup
+  fw_ext    = WAF·Network Firewall·Shield·Security Group(인터넷 접점)·NACL
+  fw_int    = 내부 Security Group·NACL·VPC간 방화벽(TGW 라우팅 제어)
+  ips       = GuardDuty·AWS Shield Advanced·Network Firewall IDS 모드
+  netlink   = PrivateLink·Transit Gateway·Direct Connect·VPN Connection(내부망↔외부)
+  vpn       = AWS Site-to-Site VPN·Client VPN·VPN Gateway
+  nac       = Network ACL·IAM SCPs·AWS SSO·IAM Identity Center
+  av        = Inspector·Systems Manager Patch Manager·Malware Protection
+  siem      = CloudTrail·CloudWatch·Security Hub·Amazon Detective·OpenSearch
+  ap        = 해당 없음(클라우드) — 온프레미스 무선 AP가 도식에 있으면 true`,
+    azure:`
+Azure 구성요소 → 망분리 개념 매핑:
+  internal  = Private Subnet/VNet의 VM·AKS·App Service 등 내부 서비스
+  internet  = Public IP·Internet-facing 엔드포인트·인터넷 연결 경로
+  inetpc    = 별도 인터넷용 VM·Azure Virtual Desktop
+  dmz       = DMZ Subnet·Application Gateway·Front Door·WAF 위치 구간
+  server    = VM Scale Set·App Service·AKS(내부)·Function App
+  db        = Azure SQL·Cosmos DB·MySQL·PostgreSQL (Private Endpoint 격리)
+  dev       = 개발·테스트 VNet / 구독(Subscription)
+  dr        = Availability Zones·Azure Site Recovery·Geo-Redundant·Backup Vault
+  fw_ext    = Azure Firewall·NSG(인터넷 접점)·Front Door WAF·DDoS Protection Standard
+  fw_int    = 내부 NSG·UDR(사용자 정의 라우팅)·VNet 내부 라우팅 규칙
+  ips       = Defender for Cloud·Network Watcher·DDoS Standard·Sentinel UEBA
+  netlink   = Private Link·ExpressRoute·VPN Gateway(VNet간)·Virtual WAN
+  vpn       = Azure VPN Gateway·P2S VPN·ExpressRoute
+  nac       = NSG·Azure AD Conditional Access·Just-in-Time VM Access·PIM
+  av        = Microsoft Defender for Endpoint·Azure Update Manager·Defender for Servers
+  siem      = Microsoft Sentinel·Azure Monitor·Log Analytics Workspace·Defender XDR
+  ap        = 해당 없음(클라우드) — 온프레미스 무선 AP가 도식에 있으면 true`,
+    gcp:`
+GCP 구성요소 → 망분리 개념 매핑:
+  internal  = Private Subnet/VPC의 GCE·GKE·Cloud Run 등 내부 서비스
+  internet  = External IP·Cloud NAT·인터넷 연결 경로
+  inetpc    = 별도 인터넷용 GCE·Cloud Workstation
+  dmz       = 공개 서비스 서브넷(Cloud Armor·Cloud Load Balancing 위치 구간)
+  server    = Compute Engine·GKE·Cloud Run(내부)·App Engine
+  db        = Cloud SQL·Spanner·Bigtable·Firestore (Private IP 격리)
+  dev       = 개발·스테이징 프로젝트/VPC
+  dr        = Multi-Region·Cloud Storage Backup·Failover·HA 구성
+  fw_ext    = Cloud Armor·VPC Firewall Rule(인터넷 접점)·Cloud CDN WAF·Security Policy
+  fw_int    = 내부 VPC Firewall Rule·Shared VPC 경계·Hierarchical Firewall
+  ips       = Cloud IDS·Security Command Center·reCAPTCHA Enterprise
+  netlink   = Private Service Connect·VPC Peering·Cloud Interconnect·HA VPN(내부간)
+  vpn       = Cloud VPN·Partner Interconnect·HA VPN
+  nac       = VPC Service Controls·IAM·Organization Policy·BeyondCorp
+  av        = Security Command Center·OS Config Patch Management·Container Analysis
+  siem      = Cloud Logging·Security Command Center·Chronicle·Pub/Sub SIEM 연동
+  ap        = 해당 없음(클라우드) — 온프레미스 무선 AP가 도식에 있으면 true`
+  };
+  const cloudLabel = {general:"네트워크 구성도", aws:"AWS 클라우드 아키텍처 다이어그램", azure:"Azure 클라우드 아키텍처 다이어그램", gcp:"GCP 클라우드 아키텍처 다이어그램"};
+  return `당신은 ${cloudLabel[cloudType]||"네트워크 구성도"}를 분석하여 한국 전자금융감독규정 제15조 망분리 기준으로 구성요소를 식별하는 전문가입니다. 첨부 이미지를 보고 아래 JSON 스키마만 출력하십시오. 마크다운·설명 없이 순수 JSON만 반환.
+${schema}
+${maps[cloudType]||maps.general}
+구성도에 명시적으로 보이는 것만 true. 불분명하거나 없는 항목은 false.`;
+}
+
+/* AI 실행 버튼 */
 $("#aiBtn").addEventListener("click", async ()=>{
   const msg=$("#aiMsg"); msg.className="ai-msg";
   if(!uploadedDataURL||!uploadedDataURL.startsWith("data:image")){
     msg.className="ai-msg err"; msg.textContent="먼저 구성도를 이미지로 업로드하십시오. (PDF는 미리보기 렌더링이 된 경우에만 가능)"; return;
   }
-  msg.className="ai-msg ok"; msg.textContent="구성도 분석 중…";
-  const m = uploadedDataURL.match(/^data:(image\/\w+);base64,(.+)$/);
-  const headers = {"Content-Type":"application/json","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
-  const key=$("#aiKey").value.trim(); if(key) headers["x-api-key"]=key;
+  const provider = document.querySelector('input[name="aiProvider"]:checked').value;
+  const cloudType = document.querySelector('input[name="cloudType"]:checked').value;
+  const cloudNames = {general:"온프레미스", aws:"AWS", azure:"Azure", gcp:"GCP"};
+  msg.className="ai-msg ok"; msg.textContent=`[${cloudNames[cloudType]}] 구성도 분석 중…`;
+
   const ids = { zones:ZONES.map(z=>z[0]), devices:DEVICES.map(d=>d[0]) };
-  const prompt = `당신은 금융회사 네트워크 구성도 판독 전문가입니다. 첨부 구성도를 보고 아래 스키마의 JSON만 출력하십시오. 마크다운·설명 금지.
-{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},
-"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},
-"notes":"구성도에서 관찰한 특이사항 1~2문장(한국어)"}
-의미: internal=내부업무망, internet=인터넷 접점, inetpc=인터넷 전용망/인터넷PC, dmz=DMZ, server=전산실/서버팜, db=DB존, dev=개발망, dr=재해복구, fw_ext=외부방화벽, fw_int=내부방화벽, ips=IPS/IDS, netlink=망연계솔루션, vpn=VPN, nac=NAC, av=백신/PMS, siem=SIEM/관제, ap=무선AP. 구성도에 명시적으로 보이는 것만 true.`;
+  const prompt = buildCloudPrompt(cloudType, ids);
+  const m = uploadedDataURL.match(/^data:(image\/\w+);base64,(.+)$/);
+
   try{
-    const res = await fetch($("#aiUrl").value.trim(),{method:"POST",headers,body:JSON.stringify({
-      model:$("#aiModel").value.trim(), max_tokens:1000,
-      messages:[{role:"user",content:[
-        {type:"image",source:{type:"base64",media_type:m[1],data:m[2]}},
-        {type:"text",text:prompt}]}]})});
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const data = await res.json();
-    const text = (data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n");
+    let text;
+    if(provider==="openai"){
+      const key = document.getElementById("openaiKey").value.trim();
+      if(!key){ msg.className="ai-msg err"; msg.textContent="OpenAI API Key를 입력하십시오."; return; }
+      const model = document.getElementById("openaiModel").value.trim() || "gpt-4o";
+      const res = await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+        body:JSON.stringify({
+          model, max_tokens:1200,
+          response_format:{type:"json_object"},
+          messages:[{role:"user",content:[
+            {type:"image_url",image_url:{url:uploadedDataURL,detail:"high"}},
+            {type:"text",text:prompt}
+          ]}]
+        })
+      });
+      if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||"HTTP "+res.status); }
+      const data = await res.json();
+      text = data.choices[0].message.content;
+    } else {
+      /* Anthropic */
+      const headers={"Content-Type":"application/json","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+      const key=document.getElementById("aiKey").value.trim(); if(key) headers["x-api-key"]=key;
+      const res = await fetch(document.getElementById("aiUrl").value.trim(),{
+        method:"POST", headers,
+        body:JSON.stringify({
+          model:document.getElementById("aiModel").value.trim(), max_tokens:1200,
+          messages:[{role:"user",content:[
+            {type:"image",source:{type:"base64",media_type:m[1],data:m[2]}},
+            {type:"text",text:prompt}
+          ]}]
+        })
+      });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const data = await res.json();
+      text = (data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n");
+    }
+
     const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
     let n=0;
     ids.zones.forEach(k=>{ if(parsed.zones&&k in parsed.zones){$("#z_"+k).checked=!!parsed.zones[k];n++;} });
     ids.devices.forEach(k=>{ if(parsed.devices&&k in parsed.devices){$("#d_"+k).checked=!!parsed.devices[k];n++;} });
     msg.className="ai-msg ok";
-    msg.textContent=`자동 인식 완료 (${n}개 항목 반영). ${parsed.notes||""} — 운영 방식(다. 항목)은 구성도만으로 판단이 어려우니 직접 선택 후, 체크 결과를 반드시 검증하십시오.`;
+    msg.textContent=`[${cloudNames[cloudType]}] 자동 인식 완료 (${n}개 항목 반영). ${parsed.notes||""} — 운영 방식(다. 항목)은 구성도만으로 판단이 어려우니 직접 선택 후, 체크 결과를 반드시 검증하십시오.`;
   }catch(e){
     msg.className="ai-msg err";
-    msg.textContent="자동 인식 실패: "+e.message+" — 내부망에서는 사내 게이트웨이 주소가 필요합니다. 수동 식별로 동일한 검토가 가능합니다.";
+    msg.textContent=`자동 인식 실패 (${provider==="openai"?"OpenAI":"Anthropic"}): `+e.message;
   }
 });
 
