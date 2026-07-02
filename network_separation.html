@@ -107,6 +107,11 @@ details.ai[open] summary::before{content:"▾ "}
 .ai-radio input{width:14px;height:14px;accent-color:var(--blue);margin:0}
 .ai-cfg-block{display:grid;gap:8px}
 .ai-cfg-block label{font-size:12.5px;color:var(--muted)}
+/* 구성도 전용 뱃지 — 규칙에 영향 없는 항목 */
+.diag-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;
+  color:var(--warn);background:var(--warn-t);border:1px solid #E8C96A;
+  padding:1px 6px;border-radius:3px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.chk:has(.diag-badge){opacity:.8}
 
 .run{display:flex;justify-content:center;padding:8px 0 4px}
 
@@ -394,14 +399,14 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
    데이터 정의 — 망 영역 / 보안장비 / 운영방식 질문
    ════════════════════════════════════════════════════════════ */
 const ZONES = [
-  ["internal","내부업무망","업무용 시스템·단말이 속한 내부통신망"],
+  ["internal","내부업무망","업무용 시스템·단말이 속한 내부통신망",true],
   ["internet","인터넷(외부)망 접점","인터넷 회선 등 외부통신망과 만나는 구간"],
-  ["inetpc","인터넷 전용망(인터넷 PC/가상화 영역)","업무망과 분리된 인터넷 이용 영역"],
+  ["inetpc","인터넷 전용망(인터넷 PC/가상화 영역)","업무망과 분리된 인터넷 이용 영역",true],
   ["dmz","DMZ 구간","대외 공개 서버를 두는 완충 구간"],
   ["server","전산실 · 서버팜","전자금융거래 등 정보처리시스템 집적 구역"],
   ["db","DB존(데이터 영역)","서버팜 내 별도 구획된 데이터베이스 영역"],
-  ["dev","연구 · 개발망","개발/테스트 목적의 별도 망"],
-  ["dr","재해복구(DR) 센터","원격지 재해복구 구성"]
+  ["dev","연구 · 개발망","개발/테스트 목적의 별도 망",true],
+  ["dr","재해복구(DR) 센터","원격지 재해복구 구성",true]
 ];
 const DEVICES = [
   ["fw_ext","외부(1차) 방화벽","인터넷 접점의 침입차단시스템"],
@@ -465,10 +470,13 @@ const $ = s => document.querySelector(s);
 const _B = "c2stcHJvai1ab3d0aW9CVmJMbDdpajkzQlc3M2VVX0phNTFOZHI4Y3QtTVJMdkdVR3Jnd2hXNkl0SnRoLWdVbE1DVk1obEIzcXl1TnlweHQ3OFQzQmxia0ZKOERiTmRfZzBvUjRDeFhSMFJwaDFzLUEtbTlHRG45NTRDSTdLaWFPMllzNFYyQW8zZGV3QVhiUlpkYzRyZFUyZklUZ1NQbVlQMEE=";
 const OPENAI_KEY = atob(_B);
 
-function chkRow(id,nm,desc){
-  return `<label class="chk"><input type="checkbox" id="${id}"><span><b>${nm}</b><small>${desc}</small></span></label>`;
+function chkRow(id,nm,desc,diagOnly){
+  const badge = diagOnly
+    ? `<span class="diag-badge">구성도 전용</span>`
+    : "";
+  return `<label class="chk"><input type="checkbox" id="${id}"><span><b>${nm}</b>${badge}<small>${desc} ${diagOnly?"— 검토 규칙에는 영향 없음":""}</small></span></label>`;
 }
-$("#fsZones").insertAdjacentHTML("beforeend", ZONES.map(z=>chkRow("z_"+z[0],z[1],z[2])).join(""));
+$("#fsZones").insertAdjacentHTML("beforeend", ZONES.map(z=>chkRow("z_"+z[0],z[1],z[2],z[3])).join(""));
 $("#fsDevs").insertAdjacentHTML("beforeend", DEVICES.map(d=>chkRow("d_"+d[0],d[1],d[2])).join(""));
 $("#fsQs").insertAdjacentHTML("beforeend", QUESTIONS.map(q=>`
   <div class="q"><div class="qt">${q[1]}<span class="ref">근거 ${q[2]}</span></div>
