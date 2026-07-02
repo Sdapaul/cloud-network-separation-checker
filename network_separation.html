@@ -210,6 +210,11 @@ footer code{background:var(--blue-t);padding:1px 6px;border-radius:3px;font-size
   .jul-h .hint{display:none}
   .jul-b{padding:10px 16px!important}
   #report{display:block!important}
+  /* 권고 표준 구성도 SVG — 인쇄 시 페이지 폭에 맞게 축소 */
+  .dia-wrap{overflow:visible!important;border:none!important;padding:0!important;break-inside:avoid}
+  .dia-wrap svg{min-width:0!important;width:100%!important;height:auto!important}
+  .doc{border:1px solid #ccc!important;break-inside:avoid}
+  #diff{break-inside:avoid}
 }
 </style>
 </head>
