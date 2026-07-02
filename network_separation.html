@@ -457,7 +457,12 @@ const QUESTIONS = [
   ["q_multi_zone","내부 서버 영역에 공통망·파트너망 등 복수의 독립 구역이 있는 경우, 각 구역이 전용 경계 방화벽으로 통제됩니까?","심층방어 원칙 · 망분리 가이드라인(경계통제)",[
     ["na","해당 없음 — 단일 내부 영역만 있음"],
     ["yes","각 구역에 전용 방화벽 있음 (공통망·파트너망 등 별도 방화벽으로 분리)"],
-    ["shared","복수 구역이 단일 방화벽 공유 — 공통망·파트너망이 내부업무망 방화벽을 경유"]]]
+    ["shared","복수 구역이 단일 방화벽 공유 — 공통망·파트너망이 내부업무망 방화벽을 경유"]]],
+  ["q_inter_org","계열사·협력사·타 기관 IDC 등 외부 기관과 직접 네트워크 연결이 있는 경우, 경계 장치가 무엇입니까?","전자금융감독규정 제15조 · 망분리 가이드라인(기관 간 접속통제)",[
+    ["na","해당 없음 — 타 기관 네트워크와 직접 연결 없음"],
+    ["router_fw","라우터 또는 방화벽으로 L3 경계 통제"],
+    ["switch_only","스위치만으로 연결 — 라우터·방화벽 없는 L2 직결"],
+    ["l3sw_novlan","L3 스위치 있으나 VLAN·ACL·방화벽 경유 미구성"]]]
 ];
 </script>
 <script>
@@ -567,7 +572,7 @@ document.querySelectorAll('input[name="aiProvider"]').forEach(r=>{
 
 /* 클라우드 환경별 프롬프트 빌더 */
 function buildCloudPrompt(cloudType, ids){
-  const schema = `{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},"questions":{"q_multi_zone":"na|yes|shared"},"notes":"관찰한 특이사항 1~2문장(한국어)"}`;
+  const schema = `{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},"questions":{"q_multi_zone":"na|yes|shared","q_inter_org":"na|router_fw|switch_only|l3sw_novlan"},"notes":"관찰한 특이사항 1~2문장(한국어)"}`;
   const maps = {
     general:`internal=내부업무망, internet=인터넷 접점, inetpc=인터넷 전용망/인터넷PC, dmz=DMZ, server=전산실/서버팜, db=DB존, dev=개발망, dr=재해복구, fw_ext=외부방화벽, fw_int=내부방화벽, ips=IPS/IDS, netlink=망연계솔루션, vpn=VPN, nac=NAC, av=백신/PMS, siem=SIEM/관제, ap=무선AP`,
     aws:`
@@ -638,7 +643,14 @@ GCP 구성요소 → 망분리 개념 매핑:
 q_multi_zone 판단 기준:
 - "na": 구성도에 내부 구역이 하나뿐이거나 복수 구역 여부를 판단할 수 없음
 - "yes": 공통망·파트너망·Shared Services Zone 등 복수의 독립 내부 구역이 각각 전용 방화벽을 가짐
-- "shared": 복수의 내부 구역(예: INTERNAL ZONE + Shared Services Zone)이 동일 방화벽을 경유하거나 공유함 — 한 구역의 방화벽 경로가 다른 구역을 통과하는 경우 포함`;
+- "shared": 복수의 내부 구역(예: INTERNAL ZONE + Shared Services Zone)이 동일 방화벽을 경유하거나 공유함 — 한 구역의 방화벽 경로가 다른 구역을 통과하는 경우 포함
+
+q_inter_org 판단 기준 (계열사·협력사·타 기관 IDC 간 연결):
+- "na": 구성도에 타 기관·타 회사 네트워크와의 직접 연결이 없음
+- "router_fw": 기관 간 경계에 라우터 또는 방화벽이 명시적으로 있어 L3 분리가 이루어짐
+- "switch_only": 복수의 회사·IDC(예: LINA LIFE IDC, LINA GI IDC, LINA ONE IDC 등)가 스위치만으로 직접 연결 — 라우터·방화벽 없이 스위치 심볼(별표·네트워크 아이콘)로만 연결된 경우
+- "l3sw_novlan": L3 스위치가 있으나 VLAN 분리·방화벽 경유 구조가 없어 사실상 L2 직결과 동일한 경우
+※ 스위치 심볼(★, ❄, 네트워크 스위치 아이콘)이 기관 간 경계에 있고 라우터/방화벽 없이 연결된 경우 "switch_only"로 판단`;
   return `당신은 ${cloudLabel[cloudType]||"네트워크 구성도"}를 분석하여 한국 전자금융감독규정 제15조 망분리 기준으로 구성요소를 식별하는 전문가입니다. 첨부 이미지를 보고 아래 JSON 스키마만 출력하십시오. 마크다운·설명 없이 순수 JSON만 반환.
 ${schema}
 ${maps[cloudType]||maps.general}
@@ -866,6 +878,17 @@ const RULES = [
       "Azure VNET 내 DB 계층(Azure SQL·Cosmos DB·MySQL 등)이 앱/웹 티어와 분리된 전용 서브넷으로 구획되어 있지 않습니다. DB를 앱 계층과 동일 서브넷에 두면 앱 서버 침해 시 DB에 직접 접근이 가능해 망분리 심층방어 원칙에 위배됩니다.",
       "DB 자원을 Private Endpoint 전용 서브넷에 배치하고, 앱 서브넷의 NSG에서 DB 포트(1433/3306/5432 등) 인바운드를 앱 서브넷 주소 범위에서만 허용하십시오. 구성도에 DB 전용 서브넷과 Private Endpoint 연결 경로를 명시하십시오."];
     return ["pass","DB 계층이 전용 서브넷으로 분리되어 Private Endpoint 또는 NSG로 접근이 제한됩니다. DB 포트 허용 범위를 앱 서브넷으로만 제한했는지 정기 점검하십시오.",""];
+  }},
+ {id:"NET-12", nm:"기관 간 연결 경계 통제 — 스위치 직결 금지", ref:"전자금융감독규정 제15조 · 망분리 가이드라인(기관 간 접속통제·심층방어)",
+  ev(s){
+    if(s.q_inter_org==="na") return ["na","타 기관 네트워크와 직접 연결이 없어 해당 없음.",""];
+    if(s.q_inter_org==="router_fw") return ["pass","계열사·타 기관과의 연결 경계에 라우터 또는 방화벽이 있어 L3 분리와 접근 통제가 이루어집니다.",""];
+    if(s.q_inter_org==="switch_only") return ["fail",
+      "계열사·협력사·타 기관 IDC가 스위치만으로 직접 연결되어 있습니다. 스위치는 L2(데이터링크) 장비로, 연결된 모든 기관이 동일 브로드캐스트 도메인에 속하게 됩니다. 이로 인해 ① 기관 간 트래픽이 물리적으로 분리되지 않고 ② ARP 스푸핑·MAC 플러딩 등 L2 공격이 타 기관으로 전파되며 ③ 기관 단위 접근 통제 정책을 적용할 수 없어 망분리 요건을 충족하지 못합니다.",
+      "기관 간 경계에 라우터 또는 방화벽을 설치하여 L3 수준으로 망을 분리하고, 허용 트래픽만 통과하는 접근 제어 정책(ACL·방화벽 룰)을 적용하십시오. 기존 스위치 연결을 유지해야 하는 경우 L3 스위치(SVI 라우팅 활성화) + 방화벽 강제 경유 구조로 전환하거나, 기관별 VLAN을 분리하고 인터-VLAN 통신을 방화벽으로 통제하십시오."];
+    return ["fail",
+      "계열사·타 기관과의 연결에 L3 스위치가 있으나 VLAN 분리·ACL·방화벽 경유 통제가 구성되어 있지 않습니다. L3 스위치 단독으로는 기관 간 트래픽 차단이 보장되지 않습니다.",
+      "L3 스위치에 기관별 VLAN을 설정하고, 인터-VLAN 트래픽을 방화벽으로 강제 경유시키는 정책을 구성하십시오. 구성도에 VLAN ID와 방화벽 경유 경로를 명시하십시오."];
   }}
 ];
 
@@ -960,6 +983,7 @@ function buildDiagram(s,results){
   if(s.q_multi_zone==="shared") diffs.push(["add","공통망·파트너망 전용 경계 방화벽 추가 — 내부업무망 방화벽과 분리 배치 [NET-11]"]);
   if(s.cloudType==="azure"&&!s.zones.internet) diffs.push(["add","Azure Entra ID 인증 경로 추가 — NAT GW / Azure Firewall 통해 아웃바운드 인터넷 허용 [AZ-01]"]);
   if(s.cloudType==="azure"&&s.zones.server&&!s.zones.db) diffs.push(["add","Azure DB Private Endpoint 전용 서브넷 신설 — DB를 앱 계층과 분리 [AZ-02]"]);
+  if(s.q_inter_org==="switch_only"||s.q_inter_org==="l3sw_novlan") diffs.push(["add","기관 간 경계에 라우터·방화벽 추가 — 스위치 L2 직결을 L3 분리 구조로 전환 [NET-12]"]);
 
   // ── SVG 도형 헬퍼 ──
   const zone=(x,y,w,h,t,sub,exists)=>P.push(
