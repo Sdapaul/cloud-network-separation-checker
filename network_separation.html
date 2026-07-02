@@ -453,7 +453,11 @@ const QUESTIONS = [
   ["q_saas","내부업무망에서 클라우드 SaaS를 이용합니까?","시행세칙 제2조의3①3호 · 별표7 (2026.4.20. 시행)",[
     ["no","이용하지 않음"],
     ["yes_ctrl","이용 — 고유식별·개인신용정보 미처리 + 별표7 대체통제 + 반기 1회 평가 · 정보보호위원회 보고"],
-    ["yes_noctrl","이용 — 위 요건 미이행"]]]
+    ["yes_noctrl","이용 — 위 요건 미이행"]]],
+  ["q_multi_zone","내부 서버 영역에 공통망·파트너망 등 복수의 독립 구역이 있는 경우, 각 구역이 전용 경계 방화벽으로 통제됩니까?","심층방어 원칙 · 망분리 가이드라인(경계통제)",[
+    ["na","해당 없음 — 단일 내부 영역만 있음"],
+    ["yes","각 구역에 전용 방화벽 있음 (공통망·파트너망 등 별도 방화벽으로 분리)"],
+    ["shared","복수 구역이 단일 방화벽 공유 — 공통망·파트너망이 내부업무망 방화벽을 경유"]]]
 ];
 </script>
 <script>
@@ -487,6 +491,7 @@ function readState(){
   ZONES.forEach(z=>st.zones[z[0]]=$("#z_"+z[0]).checked);
   DEVICES.forEach(d=>st.devs[d[0]]=$("#d_"+d[0]).checked);
   QUESTIONS.forEach(q=>st[q[0]]=$("#"+q[0]).value);
+  st.cloudType = (document.querySelector('input[name="cloudType"]:checked')||{}).value||"general";
   return st;
 }
 
@@ -562,7 +567,7 @@ document.querySelectorAll('input[name="aiProvider"]').forEach(r=>{
 
 /* 클라우드 환경별 프롬프트 빌더 */
 function buildCloudPrompt(cloudType, ids){
-  const schema = `{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},"notes":"관찰한 특이사항 1~2문장(한국어)"}`;
+  const schema = `{"zones":{${ids.zones.map(k=>`"${k}":true|false`).join(",")}},"devices":{${ids.devices.map(k=>`"${k}":true|false`).join(",")}},"questions":{"q_multi_zone":"na|yes|shared"},"notes":"관찰한 특이사항 1~2문장(한국어)"}`;
   const maps = {
     general:`internal=내부업무망, internet=인터넷 접점, inetpc=인터넷 전용망/인터넷PC, dmz=DMZ, server=전산실/서버팜, db=DB존, dev=개발망, dr=재해복구, fw_ext=외부방화벽, fw_int=내부방화벽, ips=IPS/IDS, netlink=망연계솔루션, vpn=VPN, nac=NAC, av=백신/PMS, siem=SIEM/관제, ap=무선AP`,
     aws:`
@@ -624,9 +629,20 @@ GCP 구성요소 → 망분리 개념 매핑:
   ap        = 해당 없음(클라우드) — 온프레미스 무선 AP가 도식에 있으면 true`
   };
   const cloudLabel = {general:"네트워크 구성도", aws:"AWS 클라우드 아키텍처 다이어그램", azure:"Azure 클라우드 아키텍처 다이어그램", gcp:"GCP 클라우드 아키텍처 다이어그램"};
+  const azureExtra = cloudType==="azure" ? `
+※ Azure 환경 추가 확인 사항:
+1. internet(Entra ID): Azure는 Entra ID(구 Azure AD) 인증에 인터넷 아웃바운드가 필수. NAT Gateway·Azure Firewall·Public IP를 통한 인터넷 연결 경로가 도식에 있으면 true. 경로가 명시되지 않았거나 모든 아웃바운드가 차단된 폐쇄 구성이면 false.
+2. db(DB 서브넷 분리): WEB/WAS 계층과 별도 서브넷에 Private Endpoint가 명시된 경우만 true. 같은 VNET이라도 전용 서브넷 분리가 없으면 false.
+3. q_multi_zone: VNET이 복수이거나 명시적으로 구분된 보안 경계(Dev VNET·Prod VNET·Sec VNET 등)가 각각 전용 NSG·방화벽으로 통제된 경우 "yes", 경계 구분 없이 단일 NSG를 공유하면 "shared", 단일 VNET이면 "na".` : ``;
+  const multiZoneInstruction = `
+q_multi_zone 판단 기준:
+- "na": 구성도에 내부 구역이 하나뿐이거나 복수 구역 여부를 판단할 수 없음
+- "yes": 공통망·파트너망·Shared Services Zone 등 복수의 독립 내부 구역이 각각 전용 방화벽을 가짐
+- "shared": 복수의 내부 구역(예: INTERNAL ZONE + Shared Services Zone)이 동일 방화벽을 경유하거나 공유함 — 한 구역의 방화벽 경로가 다른 구역을 통과하는 경우 포함`;
   return `당신은 ${cloudLabel[cloudType]||"네트워크 구성도"}를 분석하여 한국 전자금융감독규정 제15조 망분리 기준으로 구성요소를 식별하는 전문가입니다. 첨부 이미지를 보고 아래 JSON 스키마만 출력하십시오. 마크다운·설명 없이 순수 JSON만 반환.
 ${schema}
 ${maps[cloudType]||maps.general}
+${multiZoneInstruction}${azureExtra}
 구성도에 명시적으로 보이는 것만 true. 불분명하거나 없는 항목은 false.`;
 }
 
@@ -689,6 +705,12 @@ $("#aiBtn").addEventListener("click", async ()=>{
     let n=0;
     ids.zones.forEach(k=>{ if(parsed.zones&&k in parsed.zones){$("#z_"+k).checked=!!parsed.zones[k];n++;} });
     ids.devices.forEach(k=>{ if(parsed.devices&&k in parsed.devices){$("#d_"+k).checked=!!parsed.devices[k];n++;} });
+    if(parsed.questions){
+      Object.entries(parsed.questions).forEach(([k,v])=>{
+        const el=document.getElementById(k);
+        if(el&&el.tagName==="SELECT"&&el.querySelector(`option[value="${v}"]`)){el.value=v;n++;}
+      });
+    }
     msg.className="ai-msg ok";
     msg.textContent=`[${cloudNames[cloudType]}] 자동 인식 완료 (${n}개 항목 반영). ${parsed.notes||""} — 운영 방식(다. 항목)은 구성도만으로 판단이 어려우니 직접 선택 후, 체크 결과를 반드시 검증하십시오.`;
   }catch(e){
@@ -819,6 +841,31 @@ const RULES = [
     if(!s.devs.siem) return ["warn","통합로그 수집·보안관제(SIEM) 체계가 구성도에 표기되어 있지 않습니다.",
       "방화벽·IPS·망연계·VPN 로그를 통합 수집하는 SIEM/관제 구간을 구성도에 표기하고, 자체 또는 위탁 관제 체계를 명시하십시오."];
     return ["pass","보안 이벤트가 통합 수집·관제되는 체계가 구성되어 있습니다.",""];
+  }},
+ {id:"NET-11", nm:"복수 내부 망 영역의 전용 경계 방화벽 통제", ref:"심층방어 원칙 · 망분리 가이드라인(경계통제 원칙)",
+  ev(s){
+    if(s.q_multi_zone==="na") return ["na","복수의 독립 내부 망 영역이 없어 해당 없음.",""];
+    if(s.q_multi_zone==="shared") return ["fail",
+      "공통망·파트너망 등 복수의 내부 망 영역이 단일 방화벽을 공유하고 있습니다. 각 영역 경계는 독립된 전용 방화벽으로 통제해야 합니다. 한 영역의 방화벽을 다른 영역이 경유하는 구조는 공유 방화벽 침해 시 모든 영역이 동시에 노출되는 위험이 있습니다.",
+      "공통망(Shared Services Zone)·파트너 연계망 등 내부 구역마다 전용 경계 방화벽을 설치하고, 내부업무망의 방화벽과 물리적·논리적으로 분리하십시오. 구성도에 각 영역 전용 방화벽 위치와 통제 정책(접근 허용 대상·포트)을 명시하십시오."];
+    return ["pass","복수의 내부 망 영역이 각각 전용 방화벽으로 경계 통제되어 구역 간 독립성이 확보됩니다.",""];
+  }},
+ {id:"AZ-01", nm:"Azure Entra ID 인증을 위한 인터넷 연결 경로", ref:"Microsoft Azure 아키텍처 원칙 · Entra ID(구 Azure AD) 인증 요건",
+  ev(s){
+    if(s.cloudType!=="azure") return ["na","Azure 환경이 아니어서 해당 없음.",""];
+    if(!s.zones.internet) return ["fail",
+      "Azure 환경에서 Entra ID(구 Azure AD) 인증을 위한 인터넷 아웃바운드 경로가 확인되지 않습니다. Azure는 VM·AKS·App Service 등 모든 리소스의 인증에 Entra ID를 사용하며, login.microsoftonline.com 등에 대한 인터넷 접근이 필수적입니다. 이 경로가 없으면 인증 실패로 서비스 장애가 발생합니다.",
+      "NAT Gateway 또는 Azure Firewall을 통한 아웃바운드 인터넷 경로를 구성하고, NSG·방화벽 규칙에서 'AzureActiveDirectory' 서비스 태그를 대상으로 최소 허용(HTTPS 443)을 적용하십시오. Private Endpoint를 활용하는 경우에도 Entra ID 엔드포인트는 공용 인터넷 경로를 사용하므로 아웃바운드 허용이 필요합니다."];
+    return ["pass","인터넷 아웃바운드 경로가 있어 Entra ID 인증 경로가 확보됩니다. NSG에서 AzureActiveDirectory 서비스 태그를 사용해 최소 권한으로 제한했는지 확인하십시오.",""];
+  }},
+ {id:"AZ-02", nm:"Azure VNET 내 DB 계층 분리(Private Endpoint 서브넷)", ref:"Azure 보안 기준선 · Microsoft Cloud Security Benchmark (NS-1, NS-4)",
+  ev(s){
+    if(s.cloudType!=="azure") return ["na","Azure 환경이 아니어서 해당 없음.",""];
+    if(!s.zones.server) return ["na","서버 구간이 없어 해당 없음.",""];
+    if(!s.zones.db) return ["fail",
+      "Azure VNET 내 DB 계층(Azure SQL·Cosmos DB·MySQL 등)이 앱/웹 티어와 분리된 전용 서브넷으로 구획되어 있지 않습니다. DB를 앱 계층과 동일 서브넷에 두면 앱 서버 침해 시 DB에 직접 접근이 가능해 망분리 심층방어 원칙에 위배됩니다.",
+      "DB 자원을 Private Endpoint 전용 서브넷에 배치하고, 앱 서브넷의 NSG에서 DB 포트(1433/3306/5432 등) 인바운드를 앱 서브넷 주소 범위에서만 허용하십시오. 구성도에 DB 전용 서브넷과 Private Endpoint 연결 경로를 명시하십시오."];
+    return ["pass","DB 계층이 전용 서브넷으로 분리되어 Private Endpoint 또는 NSG로 접근이 제한됩니다. DB 포트 허용 범위를 앱 서브넷으로만 제한했는지 정기 점검하십시오.",""];
   }}
 ];
 
@@ -910,6 +957,9 @@ function buildDiagram(s,results){
   if(s.q_pc_sep==="none") diffs.push(["add","업무 단말 망분리 도입 — 물리(2PC) 또는 논리(CBC/SBC) [NET-03]"]);
   if(s.q_dev==="uncontrolled") diffs.push(["add","개발망: 위험성 평가 + 대체통제 + 정보보호위원회 승인 체계 적용 [NET-08]"]);
   if(s.q_saas==="yes_noctrl") diffs.push(["add","SaaS 이용: 별표7 대체통제 적용 + 반기 이행평가·위원회 보고 [NET-09]"]);
+  if(s.q_multi_zone==="shared") diffs.push(["add","공통망·파트너망 전용 경계 방화벽 추가 — 내부업무망 방화벽과 분리 배치 [NET-11]"]);
+  if(s.cloudType==="azure"&&!s.zones.internet) diffs.push(["add","Azure Entra ID 인증 경로 추가 — NAT GW / Azure Firewall 통해 아웃바운드 인터넷 허용 [AZ-01]"]);
+  if(s.cloudType==="azure"&&s.zones.server&&!s.zones.db) diffs.push(["add","Azure DB Private Endpoint 전용 서브넷 신설 — DB를 앱 계층과 분리 [AZ-02]"]);
 
   // ── SVG 도형 헬퍼 ──
   const zone=(x,y,w,h,t,sub,exists)=>P.push(
